@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rekapitulasi Laporan Guru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 min-h-screen">
+    <nav class="bg-blue-700 text-white shadow-lg sticky top-0 z-40">
+      <div
+        class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+      >
+        <div>
+          <span class="text-xs bg-blue-600 px-2.5 py-1 rounded-full font-medium"
+            >Laporan Guru</span
+          >
+          <h2 id="welcomeText" class="text-base font-bold mt-1">
+            Selamat datang Guru
+          </h2>
+        </div>
+        <button
+          onclick="logout()"
+          class="text-xs bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg font-semibold"
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+      <!-- Filter Section -->
+      <div
+        class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-4 items-end"
+      >
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-2"
+            >Pilih Kelas</label
+          >
+          <select
+            id="kelasFilter"
+            class="w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="">-- Loading Kelas --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-2"
+            >Dari Tanggal</label
+          >
+          <input
+            type="date"
+            id="startDate"
+            class="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm font-semibold"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-2"
+            >Sampai Tanggal</label
+          >
+          <input
+            type="date"
+            id="endDate"
+            class="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm font-semibold"
+          />
+        </div>
+        <button
+          onclick="loadRekap()"
+          class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md transition-all"
+        >
+          Tampilkan Laporan
+        </button>
+      </div>
+
+      <!-- Tabel Rekapitulasi -->
+      <div
+        class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
+      >
+        <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+          <h3 class="font-bold text-slate-800 text-sm">
+            Rekap Pelanggaran Siswa per Kategori
+          </h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse" id="rekapTable">
+            <thead>
+              <tr
+                id="tableHeader"
+                class="bg-slate-100/70 border-b text-xs uppercase font-bold text-slate-600"
+              >
+                <th class="p-4">NISN</th>
+                <th class="p-4">Nama Siswa</th>
+                <th class="p-4 text-center">Pagi</th>
+                <th class="p-4 text-center">Siang</th>
+                <!-- Kategori Pelanggaran Dynamic Headers -->
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="text-sm divide-y divide-slate-100">
+              <tr>
+                <td colspan="4" class="p-4 text-center text-slate-400">
+                  Silakan pilih kelas dan klik Tampilkan Laporan
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script>
+      let session = null;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        session = checkSession("guru");
+        if (!session) return;
+
+        const kw = getKategoriWaktu();
+        document.getElementById("welcomeText").innerText =
+          `Selamat ${kw} ${session.nama}, siapkah untuk memeriksa laporan hari ini??`;
+
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "getAdminDashboard" }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            if (res.success) {
+              const select = document.getElementById("kelasFilter");
+              select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+              res.kelasList.forEach((k) => {
+                select.innerHTML += `<option value="${k.Kode_Kelas}">${k.Kode_Kelas}</option>`;
+              });
+            }
+          });
+      });
+
+      function loadRekap() {
+        const kelas = document.getElementById("kelasFilter").value;
+        if (!kelas) {
+          showModal("Peringatan", "Silakan pilih kelas terlebih dahulu!", true);
+          return;
+        }
+
+        showLoading(true);
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "getRekapLaporan",
+            kelas: kelas,
+            startDate: document.getElementById("startDate").value,
+            endDate: document.getElementById("endDate").value,
+          }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            showLoading(false);
+            if (res.success) {
+              renderRekap(res);
+            }
+          });
+      }
+
+      function renderRekap(res) {
+        const trHeader = document.getElementById("tableHeader");
+        trHeader.innerHTML = `
+        <th class="p-4">NISN</th>
+        <th class="p-4">Nama Siswa</th>
+        <th class="p-4 text-center">Total Pagi</th>
+        <th class="p-4 text-center">Total Siang</th>`;
+
+        res.kategori.forEach((k) => {
+          trHeader.innerHTML += `<th class="p-4 text-center">${k.Nama_Kategori}</th>`;
+        });
+
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+
+        if (res.rekap.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="${4 + res.kategori.length}" class="p-4 text-center text-slate-400">Data siswa tidak ditemukan.</td></tr>`;
+          return;
+        }
+
+        res.rekap.forEach((r) => {
+          let katCols = "";
+          res.kategori.forEach((k) => {
+            const val = r.details[k.Nama_Kategori] || 0;
+            const badge =
+              val > 0
+                ? `<span class="px-2 py-0.5 bg-red-100 text-red-700 font-bold rounded-md">${val}</span>`
+                : `<span class="text-slate-300">0</span>`;
+            katCols += `<td class="p-4 text-center">${badge}</td>`;
+          });
+
+          tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-4 text-xs font-mono text-slate-500">${r.nisn}</td>
+            <td class="p-4 font-bold text-slate-800">${r.nama}</td>
+            <td class="p-4 text-center font-bold text-blue-600">${r.total_pagi}</td>
+            <td class="p-4 text-center font-bold text-amber-600">${r.total_siang}</td>
+            ${katCols}
+          </tr>`;
+        });
+      }
+
+      function logout() {
+        localStorage.removeItem("app_session");
+        window.location.href = "index.html";
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Validasi HSJA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 min-h-screen">
+    <nav class="bg-slate-800 text-white shadow-lg sticky top-0 z-40">
+      <div
+        class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center"
+      >
+        <div>
+          <span
+            class="text-xs bg-slate-700 px-2.5 py-1 rounded-full font-medium text-emerald-400"
+            >Petugas HSJA</span
+          >
+          <h2 id="welcomeText" class="text-base font-bold mt-1">
+            Selamat datang Petugas HSJA
+          </h2>
+        </div>
+        <button
+          onclick="logout()"
+          class="text-xs bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg font-semibold"
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+      <!-- Filter Kelas -->
+      <div
+        class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4"
+      >
+        <label class="text-xs font-bold text-slate-700 uppercase"
+          >Pilih Kelas Untuk Validasi:</label
+        >
+        <select
+          id="kelasFilter"
+          onchange="loadDataHSJA()"
+          class="px-4 py-2 bg-slate-50 border rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-slate-800"
+        >
+          <option value="">-- Loading Kelas --</option>
+        </select>
+      </div>
+
+      <!-- List Validasi Tabel / Cards -->
+      <div
+        class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
+      >
+        <div
+          class="p-4 border-b bg-slate-50/50 flex justify-between items-center"
+        >
+          <h3 class="font-bold text-slate-800 text-sm">
+            Daftar Penilaian Hari Ini
+          </h3>
+          <span class="text-xs text-slate-500"
+            >Klik Centang jika sesuai, Klik Silang jika butuh koreksi</span
+          >
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr
+                class="bg-slate-100/70 border-b text-xs uppercase font-bold text-slate-600"
+              >
+                <th class="p-4">Siswa</th>
+                <th class="p-4">Status Piket</th>
+                <th class="p-4">Penilai Piket</th>
+                <th class="p-4">Status HSJA (Validasi)</th>
+                <th class="p-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="hsjaTableBody" class="text-sm divide-y divide-slate-100">
+              <tr>
+                <td colspan="5" class="p-4 text-center text-slate-400">
+                  Pilih kelas untuk menampilkan data
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- Popup Re-Klasifikasi Validasi Silang -->
+    <div
+      id="modalKoreksiHSJA"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    >
+      <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+        <h3 class="text-lg font-bold text-slate-800 mb-1">
+          Koreksi Validasi HSJA
+        </h3>
+        <p class="text-xs text-slate-500 mb-4">
+          Ubah status penilaian atau kategori pelanggaran siswa ini:
+        </p>
+
+        <div class="space-y-4 mb-6">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1"
+              >Pilih Status Baru</label
+            >
+            <select
+              id="koreksiStatus"
+              onchange="toggleKoreksiDetail()"
+              class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm"
+            >
+              <option value="Aman">Sesuai / Aman (Batalkan Pelanggaran)</option>
+              <option value="Pelanggaran">
+                Pelanggaran (Ubah/Tambah Kategori)
+              </option>
+            </select>
+          </div>
+
+          <div id="koreksiDetailBox" class="hidden">
+            <label class="block text-xs font-bold text-slate-700 mb-2"
+              >Kategori Pelanggaran Baru</label
+            >
+            <div
+              id="hsjaKatContainer"
+              class="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto"
+            ></div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <button
+            onclick="closeModalKoreksi()"
+            class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold"
+          >
+            Batal
+          </button>
+          <button
+            onclick="submitKoreksiHSJA()"
+            class="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold"
+          >
+            Simpan Perubahan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+      let session = null;
+      let selectedLogId = null;
+      let masterKategori = [];
+
+      document.addEventListener("DOMContentLoaded", () => {
+        session = checkSession("hsja");
+        if (!session) return;
+
+        const kw = getKategoriWaktu();
+        document.getElementById("welcomeText").innerText =
+          `Selamat datang ${session.nama}, Siapkah untuk menilai pada ${kw} ini?`;
+
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "getAdminDashboard" }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            if (res.success) {
+              const select = document.getElementById("kelasFilter");
+              select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+              res.kelasList.forEach((k) => {
+                select.innerHTML += `<option value="${k.Kode_Kelas}">${k.Kode_Kelas}</option>`;
+              });
+            }
+          });
+      });
+
+      function loadDataHSJA() {
+        const kelas = document.getElementById("kelasFilter").value;
+        if (!kelas) return;
+
+        showLoading(true);
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "getPenilaianHSJA", kelas: kelas }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            showLoading(false);
+            if (res.success) {
+              masterKategori = res.kategori;
+              renderTable(res.data);
+            }
+          });
+      }
+
+      function renderTable(data) {
+        const tbody = document.getElementById("hsjaTableBody");
+        if (data.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada data penilaian piket untuk kelas ini hari ini.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = "";
+        data.forEach((item) => {
+          const isPelanggaran = item.Status_Piket === "Pelanggaran";
+          const badgePiket = isPelanggaran
+            ? `<span class="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-lg">${item.Status_Piket} (${item.Pelanggaran_Piket})</span>`
+            : `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">Aman</span>`;
+
+          const statusHSJA = item.Status_HSJA || item.Status_Piket;
+          const detailHSJA = item.Pelanggaran_HSJA || item.Pelanggaran_Piket;
+
+          const badgeHSJA =
+            statusHSJA === "Pelanggaran"
+              ? `<span class="px-2.5 py-1 bg-red-600 text-white text-xs font-bold rounded-lg">${statusHSJA} (${detailHSJA})</span>`
+              : `<span class="px-2.5 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg">Aman</span>`;
+
+          tbody.innerHTML += `
+          <tr class="hover:bg-slate-50/80">
+            <td class="p-4 font-bold text-slate-800">${item.Nama_Siswa}<br><span class="text-xs font-normal text-slate-400">${item.NISN_Siswa}</span></td>
+            <td class="p-4">${badgePiket}</td>
+            <td class="p-4 text-slate-600 text-xs">${item.Petugas_Piket}</td>
+            <td class="p-4">${badgeHSJA}</td>
+            <td class="p-4 text-center">
+              <div class="inline-flex gap-2">
+                <button onclick="approveHSJA('${item.ID_Log}')" class="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl transition-all" title="Setujui Penilaian Piket">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
+                <button onclick="openKoreksiModal('${item.ID_Log}')" class="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all" title="Koreksi / Ubah Penilaian">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>`;
+        });
+      }
+
+      function approveHSJA(idLog) {
+        showLoading(true);
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "submitValidasiHSJA",
+            id_log: idLog,
+            status_hsja: "Aman",
+            pelanggaran_hsja: "-",
+            petugas_hsja: session.nama,
+          }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            showLoading(false);
+            if (res.success) {
+              loadDataHSJA();
+            }
+          });
+      }
+
+      function openKoreksiModal(idLog) {
+        selectedLogId = idLog;
+        const container = document.getElementById("hsjaKatContainer");
+        container.innerHTML = "";
+        masterKategori.forEach((k) => {
+          container.innerHTML += `
+          <label class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg text-xs font-semibold cursor-pointer">
+            <input type="checkbox" name="hsja_kat" value="${k.Nama_Kategori}" class="w-4 h-4 text-red-600 rounded">
+            ${k.Nama_Kategori}
+          </label>`;
+        });
+
+        document.getElementById("modalKoreksiHSJA").classList.remove("hidden");
+      }
+
+      function closeModalKoreksi() {
+        document.getElementById("modalKoreksiHSJA").classList.add("hidden");
+      }
+
+      function toggleKoreksiDetail() {
+        const val = document.getElementById("koreksiStatus").value;
+        const box = document.getElementById("koreksiDetailBox");
+        if (val === "Pelanggaran") box.classList.remove("hidden");
+        else box.classList.add("hidden");
+      }
+
+      function submitKoreksiHSJA() {
+        const status = document.getElementById("koreksiStatus").value;
+        let selectedKategori = [];
+        if (status === "Pelanggaran") {
+          document
+            .querySelectorAll('input[name="hsja_kat"]:checked')
+            .forEach((c) => selectedKategori.push(c.value));
+        }
+
+        showLoading(true);
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "submitValidasiHSJA",
+            id_log: selectedLogId,
+            status_hsja: status,
+            pelanggaran_hsja: selectedKategori.join(", ") || "-",
+            petugas_hsja: session.nama,
+          }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            showLoading(false);
+            closeModalKoreksi();
+            if (res.success) {
+              loadDataHSJA();
+            }
+          });
+      }
+
+      function logout() {
+        localStorage.removeItem("app_session");
+        window.location.href = "index.html";
+      }
+    </script>
+  </body>
+</html>

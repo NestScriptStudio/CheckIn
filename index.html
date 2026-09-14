@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Sistem Pelanggaran Siswa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 min-h-screen flex items-center justify-center p-4"
+  >
+    <div
+      class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-8 transform transition-all duration-500 animate-fade-in"
+    >
+      <div class="text-center mb-8">
+        <div
+          class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/30 mb-4"
+        >
+          <svg
+            class="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+            />
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-800">
+          Sistem Pelanggaran Siswa
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
+          Silakan pilih jenis akun untuk masuk
+        </p>
+      </div>
+
+      <!-- Tab Selector Role -->
+      <div
+        class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl mb-6 text-xs font-semibold"
+      >
+        <button
+          onclick="switchTab('kelas')"
+          id="tab-kelas"
+          class="py-2.5 rounded-lg text-blue-600 bg-white shadow-sm transition-all"
+        >
+          Kelas
+        </button>
+        <button
+          onclick="switchTab('hsja')"
+          id="tab-hsja"
+          class="py-2.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all"
+        >
+          HSJA
+        </button>
+        <button
+          onclick="switchTab('guru')"
+          id="tab-guru"
+          class="py-2.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all"
+        >
+          Guru
+        </button>
+        <button
+          onclick="switchTab('admin')"
+          id="tab-admin"
+          class="py-2.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all"
+        >
+          Admin
+        </button>
+      </div>
+
+      <!-- Form Mode Kelas -->
+      <form
+        id="form-kelas"
+        onsubmit="handleLogin(event, 'kelas')"
+        class="space-y-4"
+      >
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >Pilih Kelas</label
+          >
+          <select
+            id="kelas-select"
+            required
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          >
+            <option value="">-- Loading Kelas --</option>
+          </select>
+        </div>
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >Password Kelas</label
+          >
+          <input
+            type="password"
+            id="kelas-pass"
+            required
+            placeholder="••••••••"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-500/25 transition-all"
+        >
+          Masuk Mode Kelas
+        </button>
+      </form>
+
+      <!-- Form Mode HSJA -->
+      <form
+        id="form-hsja"
+        onsubmit="handleLogin(event, 'hsja')"
+        class="space-y-4 hidden"
+      >
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >NISN Petugas HSJA</label
+          >
+          <input
+            type="text"
+            id="hsja-nisn"
+            required
+            placeholder="Masukkan NISN"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >Password</label
+          >
+          <input
+            type="password"
+            id="hsja-pass"
+            required
+            placeholder="••••••••"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-500/25 transition-all"
+        >
+          Masuk Petugas HSJA
+        </button>
+      </form>
+
+      <!-- Form Mode Guru -->
+      <form
+        id="form-guru"
+        onsubmit="handleLogin(event, 'guru')"
+        class="space-y-4 hidden"
+      >
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >Nama Guru</label
+          >
+          <input
+            type="text"
+            id="guru-nama"
+            required
+            placeholder="Nama Lengkap dengan Gelar"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >NIP (Sebagai Sandi)</label
+          >
+          <input
+            type="password"
+            id="guru-nip"
+            required
+            placeholder="Masukkan NIP"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-500/25 transition-all"
+        >
+          Masuk Mode Guru
+        </button>
+      </form>
+
+      <!-- Form Mode Admin -->
+      <form
+        id="form-admin"
+        onsubmit="handleLogin(event, 'admin')"
+        class="space-y-4 hidden"
+      >
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >Username Admin</label
+          >
+          <input
+            type="text"
+            id="admin-user"
+            required
+            placeholder="Username"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <div>
+          <label
+            class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+            >Password Admin</label
+          >
+          <input
+            type="password"
+            id="admin-pass"
+            required
+            placeholder="••••••••"
+            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full py-3.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl text-sm shadow-lg transition-all"
+        >
+          Masuk Panel Admin
+        </button>
+      </form>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+      let activeRole = "kelas";
+
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "getAdminDashboard" }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            if (res.success) {
+              const select = document.getElementById("kelas-select");
+              select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+              res.kelasList.forEach((k) => {
+                select.innerHTML += `<option value="${k.Kode_Kelas}">${k.Kode_Kelas}</option>`;
+              });
+            }
+          });
+      });
+
+      function switchTab(role) {
+        activeRole = role;
+        ["kelas", "hsja", "guru", "admin"].forEach((r) => {
+          document.getElementById(`form-${r}`).classList.add("hidden");
+          document.getElementById(`tab-${r}`).className =
+            "py-2.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all";
+        });
+        document.getElementById(`form-${role}`).classList.remove("hidden");
+        document.getElementById(`tab-${role}`).className =
+          "py-2.5 rounded-lg text-blue-600 bg-white shadow-sm transition-all";
+      }
+
+      function handleLogin(e, role) {
+        e.preventDefault();
+        showLoading(true);
+
+        let payload = { action: "" };
+
+        if (role === "kelas") {
+          payload.action = "loginClass";
+          payload.kode_kelas = document.getElementById("kelas-select").value;
+          payload.password = document.getElementById("kelas-pass").value;
+        } else if (role === "hsja") {
+          payload.action = "loginHSJA";
+          payload.nisn = document.getElementById("hsja-nisn").value;
+          payload.password = document.getElementById("hsja-pass").value;
+        } else if (role === "guru") {
+          payload.action = "loginGuru";
+          payload.nama = document.getElementById("guru-nama").value;
+          payload.nip = document.getElementById("guru-nip").value;
+        } else if (role === "admin") {
+          payload.action = "loginAdmin";
+          payload.username = document.getElementById("admin-user").value;
+          payload.password = document.getElementById("admin-pass").value;
+        }
+
+        fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+          .then((res) => res.json())
+          .then((res) => {
+            showLoading(false);
+            if (res.success) {
+              const session = {
+                role: role,
+                timestamp: new Date().getTime(),
+                ...res,
+              };
+              localStorage.setItem("app_session", JSON.stringify(session));
+
+              if (role === "kelas") window.location.href = "piket.html";
+              if (role === "hsja") window.location.href = "hsja.html";
+              if (role === "guru") window.location.href = "laporan.html";
+              if (role === "admin") window.location.href = "admin.html";
+            } else {
+              showModal("Login Gagal", res.message, true);
+            }
+          })
+          .catch(() => {
+            showLoading(false);
+            showModal(
+              "Kesalahan Sistem",
+              "Gagal terhubung ke server database",
+              true,
+            );
+          });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Admin - Sistem Pelanggaran Siswa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 min-h-screen">
+    <nav class="bg-slate-900 text-white shadow-xl sticky top-0 z-40">
+      <div
+        class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+      >
+        <h2 class="text-lg font-bold flex items-center gap-2">
+          <span class="w-3 h-3 bg-emerald-500 rounded-full animate-ping"></span>
+          Panel Admin Control System
+        </h2>
+        <button
+          onclick="logout()"
+          class="text-xs bg-red-500/80 hover:bg-red-600 px-3.5 py-2 rounded-xl font-semibold transition-all"
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-8">
+      <!-- Container KPI / Ringkasan Data -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <!-- Container Total Siswa -->
+        <div
+          onclick="openSiswaModal()"
+          class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer hover:border-blue-500 hover:shadow-md transition-all group"
+        >
+          <div class="flex justify-between items-center mb-2">
+            <span
+              class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >Total Siswa Terdaftar</span
+            >
+            <span
+              class="p-2 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                ></path>
+              </svg>
+            </span>
+          </div>
+          <div
+            class="text-3xl font-extrabold text-slate-800"
+            id="totalSiswaCount"
+          >
+            0
+          </div>
+          <p
+            class="text-xs text-blue-600 font-semibold mt-2 flex items-center gap-1"
+          >
+            Klik untuk melihat rincian per kelas &rarr;
+          </p>
+        </div>
+
+        <!-- Container Total Pelanggaran -->
+        <div
+          onclick="openPelanggaranModal()"
+          class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer hover:border-red-500 hover:shadow-md transition-all group"
+        >
+          <div class="flex justify-between items-center mb-2">
+            <span
+              class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >Total Pelanggaran (Sesuai Filter)</span
+            >
+            <span
+              class="p-2 bg-red-50 text-red-600 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-all"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                ></path>
+              </svg>
+            </span>
+          </div>
+          <div
+            class="text-3xl font-extrabold text-slate-800"
+            id="totalPelanggaranCount"
+          >
+            0
+          </div>
+          <p
+            class="text-xs text-red-600 font-semibold mt-2 flex items-center gap-1"
+          >
+            Klik untuk melihat rincian per kelas &rarr;
+          </p>
+        </div>
+      </div>
+
+      <!-- Filter Rentang Waktu -->
+      <div
+        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-end gap-4"
+      >
+        <div class="w-full sm:w-auto flex-1">
+          <label class="block text-xs font-bold text-slate-600 mb-1"
+            >Tanggal Mulai</label
+          >
+          <input
+            type="date"
+            id="startDate"
+            class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div class="w-full sm:w-auto flex-1">
+          <label class="block text-xs font-bold text-slate-600 mb-1"
+            >Tanggal Selesai</label
+          >
+          <input
+            type="date"
+            id="endDate"
+            class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div class="flex gap-2 w-full sm:w-auto">
+          <button
+            onclick="applyDateFilter()"
+            class="flex-1 sm:flex-none px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all"
+          >
+            Terapkan Filter
+          </button>
+          <button
+            onclick="resetDateFilter()"
+            class="flex-1 sm:flex-none px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs rounded-xl transition-all"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Grafik Top 6 Siswa Pelanggaran Terbanyak -->
+      <div
+        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4"
+      >
+        <h3 class="font-bold text-slate-800 text-sm">
+          Top 6 Siswa Pelanggaran Terbanyak
+        </h3>
+        <div class="relative w-full h-72">
+          <canvas id="chartTopSiswa"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div
+          class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4"
+        >
+          <h3 class="font-bold text-slate-800 text-sm">
+            Grafik Perbandingan Pelanggaran Per Kelas
+          </h3>
+          <div class="relative w-full h-64">
+            <canvas id="chartKelas"></canvas>
+          </div>
+        </div>
+        <div
+          class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4"
+        >
+          <h3 class="font-bold text-slate-800 text-sm">
+            Grafik Batang Kategori Pelanggaran Terbanyak
+          </h3>
+          <div class="relative w-full h-64">
+            <canvas id="chartKategori"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Management Data Actions -->
+      <div
+        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6"
+      >
+        <h3 class="font-bold text-slate-800 border-b pb-3">
+          Manajemen Master Data & Export CSV
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button
+            onclick="downloadTemplate()"
+            class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left hover:bg-slate-100 transition-all"
+          >
+            <div class="font-bold text-slate-800 text-sm mb-1">
+              Download Template CSV
+            </div>
+            <div class="text-xs text-slate-500">
+              Format standar upload Siswa, Petugas & Guru
+            </div>
+          </button>
+
+          <button
+            onclick="exportData('raw')"
+            class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-left hover:bg-emerald-100 transition-all"
+          >
+            <div class="font-bold text-emerald-800 text-sm mb-1">
+              Export Data Mentah CSV
+            </div>
+            <div class="text-xs text-emerald-600">
+              Unduh seluruh riwayat Log Penilaian
+            </div>
+          </button>
+
+          <button
+            onclick="exportData('rekap')"
+            class="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-left hover:bg-blue-100 transition-all"
+          >
+            <div class="font-bold text-blue-800 text-sm mb-1">
+              Export Rekapitulasi Excel
+            </div>
+            <div class="text-xs text-blue-600">
+              Unduh hasil rekapitulasi per kelas
+            </div>
+          </button>
+        </div>
+
+        <!-- Upload Form CSV -->
+        <div
+          class="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-3"
+        >
+          <h4 class="text-xs font-bold text-slate-700 uppercase">
+            Upload / Import Master Data (CSV)
+          </h4>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <select
+              id="importTarget"
+              class="px-4 py-2 bg-white border rounded-xl text-sm font-semibold"
+            >
+              <option value="Data_Siswa">Import Data Siswa</option>
+              <option value="Data_Petugas">Import Data Petugas</option>
+              <option value="Data_Guru">Import Data Guru</option>
+            </select>
+            <input
+              type="file"
+              id="csvFileInput"
+              accept=".csv"
+              class="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white"
+            />
+            <button
+              onclick="processCSVImport()"
+              class="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold"
+            >
+              Proses Import
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Filter Export Rekap -->
+      <div
+        id="rekapModal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      >
+        <div
+          class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4"
+        >
+          <h3 class="text-lg font-bold text-slate-800">
+            Export Rekapitulasi Excel
+          </h3>
+          <p class="text-xs text-slate-500">
+            Pilih rentang tanggal rekapitulasi yang ingin diunduh per kelas.
+          </p>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1"
+                >Tanggal Mulai</label
+              >
+              <input
+                type="date"
+                id="rekapStartDate"
+                class="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1"
+                >Tanggal Selesai</label
+              >
+              <input
+                type="date"
+                id="rekapEndDate"
+                class="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button
+              onclick="closeRekapModal()"
+              class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold"
+            >
+              Batal
+            </button>
+            <button
+              onclick="processExportRekapExcel()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold"
+            >
+              Download Excel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Pilih Template Import -->
+      <div
+        id="templateModal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      >
+        <div
+          class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4"
+        >
+          <h3 class="text-lg font-bold text-slate-800">
+            Download Template Import CSV
+          </h3>
+          <p class="text-xs text-slate-500">
+            Pilih jenis master data yang ingin dibuatkan berkas template
+            CSV-nya.
+          </p>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1"
+              >Tipe Master Data</label
+            >
+            <select
+              id="templateTargetSelect"
+              class="w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Data_Siswa">Master Data Siswa</option>
+              <option value="Data_Petugas">Master Data Petugas</option>
+              <option value="Data_Guru">Master Data Guru</option>
+            </select>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button
+              onclick="closeTemplateModal()"
+              class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all"
+            >
+              Batal
+            </button>
+            <button
+              onclick="processDownloadTemplate()"
+              class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-all"
+            >
+              Download Template
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script>
+      let dashboardData = null;
+      let chartKelasInstance = null;
+      let chartKategoriInstance = null;
+      let chartTopSiswaInstance = null;
+      let currentFilteredLogs = [];
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const session = checkSession("admin");
+        if (!session) return;
+
+        showLoading(true);
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "getAdminDashboard" }),
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            showLoading(false);
+            if (res.success) {
+              dashboardData = res;
+              renderChartsWithFilter();
+            }
+          })
+          .catch((err) => {
+            showLoading(false);
+            console.error("Gagal memuat dashboard:", err);
+          });
+      });
+
+      function applyDateFilter() {
+        renderChartsWithFilter();
+      }
+
+      function resetDateFilter() {
+        document.getElementById("startDate").value = "";
+        document.getElementById("endDate").value = "";
+        renderChartsWithFilter();
+      }
+
+      function renderChartsWithFilter() {
+        if (!dashboardData) return;
+
+        const siswaSource =
+          dashboardData.siswaList || dashboardData.siswa || [];
+
+        let totalSiswaCount = 0;
+        if (siswaSource.length > 0) {
+          totalSiswaCount = siswaSource.length;
+        } else if (dashboardData.logs) {
+          const uniqueNISN = new Set(
+            dashboardData.logs.map((l) => l.NISN_Siswa).filter(Boolean),
+          );
+          totalSiswaCount = uniqueNISN.size;
+        }
+        document.getElementById("totalSiswaCount").innerText = totalSiswaCount;
+
+        const startVal = document.getElementById("startDate").value;
+        const endVal = document.getElementById("endDate").value;
+
+        currentFilteredLogs = (dashboardData.logs || []).filter((l) => {
+          if (l.Status_HSJA !== "Pelanggaran") return false;
+
+          let logDate = "";
+          if (l.Tanggal) {
+            logDate = String(l.Tanggal).substring(0, 10);
+          }
+
+          if (startVal && logDate < startVal) return false;
+          if (endVal && logDate > endVal) return false;
+
+          return true;
+        });
+
+        document.getElementById("totalPelanggaranCount").innerText =
+          currentFilteredLogs.length;
+
+        const kelasCounts = {};
+        currentFilteredLogs.forEach((l) => {
+          if (l.Kelas) {
+            kelasCounts[l.Kelas] = (kelasCounts[l.Kelas] || 0) + 1;
+          }
+        });
+
+        const katCounts = {};
+        currentFilteredLogs.forEach((l) => {
+          if (l.Pelanggaran_HSJA && l.Pelanggaran_HSJA !== "-") {
+            l.Pelanggaran_HSJA.split(", ").forEach((k) => {
+              const cleanedKey = k.trim();
+              if (cleanedKey) {
+                katCounts[cleanedKey] = (katCounts[cleanedKey] || 0) + 1;
+              }
+            });
+          }
+        });
+
+        const siswaCounts = {};
+        currentFilteredLogs.forEach((l) => {
+          const nameLabel = l.Nama_Siswa || "Siswa";
+          const classLabel = l.Kelas || "Tanpa Kelas";
+          const key = `${nameLabel} (${classLabel})`;
+          siswaCounts[key] = (siswaCounts[key] || 0) + 1;
+        });
+
+        const sortedSiswa = Object.keys(siswaCounts)
+          .map((key) => ({ name: key, count: siswaCounts[key] }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6);
+
+        if (chartKelasInstance) chartKelasInstance.destroy();
+        if (chartKategoriInstance) chartKategoriInstance.destroy();
+        if (chartTopSiswaInstance) chartTopSiswaInstance.destroy();
+
+        const ctxKelas = document.getElementById("chartKelas").getContext("2d");
+        chartKelasInstance = new Chart(ctxKelas, {
+          type: "bar",
+          data: {
+            labels: Object.keys(kelasCounts),
+            datasets: [
+              {
+                label: "Jumlah Pelanggaran",
+                data: Object.values(kelasCounts),
+                backgroundColor: "#3b82f6",
+                borderRadius: 8,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          },
+        });
+
+        const ctxKategori = document
+          .getElementById("chartKategori")
+          .getContext("2d");
+        chartKategoriInstance = new Chart(ctxKategori, {
+          type: "bar",
+          data: {
+            labels: Object.keys(katCounts),
+            datasets: [
+              {
+                label: "Total Pelanggaran",
+                data: Object.values(katCounts),
+                backgroundColor: "#ef4444",
+                borderRadius: 8,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          },
+        });
+
+        const ctxTopSiswa = document
+          .getElementById("chartTopSiswa")
+          .getContext("2d");
+        chartTopSiswaInstance = new Chart(ctxTopSiswa, {
+          type: "bar",
+          data: {
+            labels: sortedSiswa.map((s) => s.name),
+            datasets: [
+              {
+                label: "Jumlah Pelanggaran",
+                data: sortedSiswa.map((s) => s.count),
+                backgroundColor: "#8b5cf6",
+                borderRadius: 8,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          },
+        });
+      }
+
+      function openSiswaModal() {
+        if (!dashboardData) {
+          showModal("Peringatan", "Data belum selesai dimuat.", true);
+          return;
+        }
+
+        const kelasMap = {};
+        const siswaSource =
+          dashboardData.siswaList || dashboardData.siswa || [];
+
+        if (siswaSource.length > 0) {
+          siswaSource.forEach((s) => {
+            const k = s.Kelas || "Tanpa Kelas";
+            kelasMap[k] = (kelasMap[k] || 0) + 1;
+          });
+        } else if (dashboardData.logs) {
+          const seenNISN = new Set();
+          dashboardData.logs.forEach((l) => {
+            if (l.NISN_Siswa && !seenNISN.has(l.NISN_Siswa)) {
+              seenNISN.add(l.NISN_Siswa);
+              const k = l.Kelas || "Tanpa Kelas";
+              kelasMap[k] = (kelasMap[k] || 0) + 1;
+            }
+          });
+        }
+
+        let rowsHtml = `<div class="max-h-60 overflow-y-auto"><table class="w-full text-left text-xs text-slate-700">
+          <thead class="bg-slate-100 font-bold uppercase sticky top-0">
+            <tr><th class="p-2.5">Kelas</th><th class="p-2.5 text-right">Jumlah Siswa</th></tr>
+          </thead><tbody>`;
+
+        const keys = Object.keys(kelasMap);
+        if (keys.length === 0) {
+          rowsHtml += `<tr><td colspan="2" class="p-4 text-center text-slate-400">Tidak ada data siswa.</td></tr>`;
+        } else {
+          keys.sort().forEach((k) => {
+            rowsHtml += `<tr class="border-b"><td class="p-2.5 font-medium">${k}</td><td class="p-2.5 text-right font-bold text-blue-600">${kelasMap[k]} Siswa</td></tr>`;
+          });
+        }
+
+        rowsHtml += `</tbody></table></div>`;
+        showModal("Rincian Siswa Per Kelas", rowsHtml, false);
+      }
+
+      function openPelanggaranModal() {
+        if (!dashboardData) {
+          showModal("Peringatan", "Data belum selesai dimuat.", true);
+          return;
+        }
+
+        const kelasMap = {};
+        currentFilteredLogs.forEach((l) => {
+          if (l.Kelas) {
+            kelasMap[l.Kelas] = (kelasMap[l.Kelas] || 0) + 1;
+          }
+        });
+
+        let rowsHtml = `<div class="max-h-60 overflow-y-auto"><table class="w-full text-left text-xs text-slate-700">
+          <thead class="bg-slate-100 font-bold uppercase sticky top-0">
+            <tr><th class="p-2.5">Kelas</th><th class="p-2.5 text-right">Jumlah Pelanggaran</th></tr>
+          </thead><tbody>`;
+
+        const keys = Object.keys(kelasMap);
+        if (keys.length === 0) {
+          rowsHtml += `<tr><td colspan="2" class="p-4 text-center text-slate-400">Tidak ada data pelanggaran pada rentang tanggal ini.</td></tr>`;
+        } else {
+          keys.sort().forEach((k) => {
+            rowsHtml += `<tr class="border-b"><td class="p-2.5 font-medium">${k}</td><td class="p-2.5 text-right font-bold text-red-600">${kelasMap[k]} Pelanggaran</td></tr>`;
+          });
+        }
+
+        rowsHtml += `</tbody></table></div>`;
+        showModal("Rincian Pelanggaran Per Kelas", rowsHtml, false);
+      }
+
+      // Skema Header acuan untuk validasi dan template
+      const SCHEMAS = {
+        Data_Siswa: ["NISN", "Nama_Siswa", "Kelas", "Jenis_Kelamin"],
+        Data_Petugas: ["ID_Petugas", "Nama_Petugas", "Jabatan", "No_HP"],
+        Data_Guru: ["NIP", "Nama_Guru", "Mata_Pelajaran", "No_HP"],
+      };
+
+      // Control Fungsi Modal Template CSV
+      function downloadTemplate() {
+        document.getElementById("templateModal").classList.remove("hidden");
+      }
+
+      function closeTemplateModal() {
+        document.getElementById("templateModal").classList.add("hidden");
+      }
+
+      function processDownloadTemplate() {
+        const target = document.getElementById("templateTargetSelect").value;
+        const headers = SCHEMAS[target];
+
+        if (!headers) {
+          showModal("Peringatan", "Target template tidak valid.", true);
+          return;
+        }
+
+        const csvContent =
+          "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Template_Import_${target}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        closeTemplateModal();
+      }
+
+      function exportData(type) {
+        if (!dashboardData) {
+          showModal("Peringatan", "Data belum dimuat.", true);
+          return;
+        }
+
+        if (type === "raw") {
+          let csv =
+            "ID_Log,Tanggal,Waktu,Kelas,NISN,Nama,Status_HSJA,Pelanggaran\n";
+          (dashboardData.logs || []).forEach((l) => {
+            csv += `"${l.ID_Log || ""}","${l.Tanggal || ""}","${l.Kategori_Waktu || ""}","${l.Kelas || ""}","${l.NISN_Siswa || ""}","${l.Nama_Siswa || ""}","${l.Status_HSJA || ""}","${l.Pelanggaran_HSJA || ""}"\n`;
+          });
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.setAttribute("href", url);
+          a.setAttribute("download", `Export_Pelanggaran_Raw.csv`);
+          a.click();
+        } else if (type === "rekap") {
+          document.getElementById("rekapModal").classList.remove("hidden");
+        }
+      }
+
+      function closeRekapModal() {
+        document.getElementById("rekapModal").classList.add("hidden");
+      }
+
+      function processExportRekapExcel() {
+        const startVal = document.getElementById("rekapStartDate").value;
+        const endVal = document.getElementById("rekapEndDate").value;
+
+        const filteredLogs = (dashboardData.logs || []).filter((l) => {
+          if (l.Status_HSJA !== "Pelanggaran") return false;
+          let logDate = l.Tanggal ? String(l.Tanggal).substring(0, 10) : "";
+          if (startVal && logDate < startVal) return false;
+          if (endVal && logDate > endVal) return false;
+          return true;
+        });
+
+        if (filteredLogs.length === 0) {
+          showModal(
+            "Peringatan",
+            "Tidak ada data pelanggaran pada rentang tanggal tersebut.",
+            true,
+          );
+          return;
+        }
+
+        const logsByKelas = {};
+        filteredLogs.forEach((l) => {
+          const k = l.Kelas || "Tanpa_Kelas";
+          if (!logsByKelas[k]) logsByKelas[k] = [];
+          logsByKelas[k].push({
+            "ID Log": l.ID_Log,
+            Tanggal: l.Tanggal,
+            Waktu: l.Kategori_Waktu,
+            NISN: l.NISN_Siswa,
+            "Nama Siswa": l.Nama_Siswa,
+            "Detail Pelanggaran": l.Pelanggaran_HSJA,
+          });
+        });
+
+        const wb = XLSX.utils.book_new();
+        Object.keys(logsByKelas).forEach((kelas) => {
+          const ws = XLSX.utils.json_to_sheet(logsByKelas[kelas]);
+          const safeSheetName = kelas
+            .replace(/[:\\/?*\[\]]/g, "_")
+            .substring(0, 30);
+          XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+        });
+
+        XLSX.writeFile(wb, `Rekap_Pelanggaran_Per_Kelas.xlsx`);
+        closeRekapModal();
+      }
+
+      function processCSVImport() {
+        const fileInput = document.getElementById("csvFileInput");
+        const targetSheet = document.getElementById("importTarget").value;
+
+        if (!fileInput.files.length) {
+          showModal("Peringatan", "Pilih file CSV terlebih dahulu!", true);
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const lines = e.target.result
+            .split("\n")
+            .filter((r) => r.trim() !== "");
+          if (lines.length < 2) {
+            showModal(
+              "Peringatan",
+              "File CSV kosong atau tidak memiliki data!",
+              true,
+            );
+            return;
+          }
+
+          const fileHeaders = lines[0]
+            .split(",")
+            .map((c) => c.replace(/"/g, "").trim());
+          const expectedHeaders = SCHEMAS[targetSheet];
+
+          const isValid = expectedHeaders.every(
+            (h, idx) => fileHeaders[idx] === h,
+          );
+          if (!isValid) {
+            showModal(
+              "Gagal Import",
+              `Struktur file CSV tidak sesuai dengan <b>${targetSheet}</b>.<br><br><b>Header Seharusnya:</b> ${expectedHeaders.join(", ")}<br><b>Header File Anda:</b> ${fileHeaders.join(", ")}`,
+              true,
+            );
+            return;
+          }
+
+          showLoading(true);
+          let promises = [];
+          for (let i = 1; i < lines.length; i++) {
+            const rowData = lines[i]
+              .split(",")
+              .map((c) => c.replace(/"/g, "").trim());
+            if (rowData.length >= expectedHeaders.length) {
+              promises.push(
+                fetch(API_URL, {
+                  method: "POST",
+                  body: JSON.stringify({
+                    action: "saveMasterData",
+                    targetSheet: targetSheet,
+                    mode: "appendRow",
+                    rowData: rowData,
+                  }),
+                }),
+              );
+            }
+          }
+
+          Promise.all(promises)
+            .then(() => {
+              showLoading(false);
+              showModal(
+                "Berhasil",
+                "Data CSV berhasil diimport ke Google Sheets!",
+                false,
+              );
+            })
+            .catch((err) => {
+              showLoading(false);
+              showModal(
+                "Error",
+                "Terjadi kesalahan saat mengunggah data.",
+                true,
+              );
+            });
+        };
+
+        reader.readAsText(fileInput.files[0]);
+      }
+
+      function logout() {
+        localStorage.removeItem("app_session");
+        window.location.href = "index.html";
+      }
+    </script>
+  </body>
+</html>
