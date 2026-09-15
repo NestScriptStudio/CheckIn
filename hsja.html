@@ -16,6 +16,30 @@
     </style>
   </head>
   <body class="bg-slate-50 min-h-screen">
+    <!-- Toast Notification (Berhasil di-check) -->
+    <div
+      id="toastSuccess"
+      class="fixed bottom-5 right-5 z-50 hidden bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 transition-all duration-300"
+    >
+      <svg
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M5 13l4 4L19 7"
+        />
+      </svg>
+      <span id="toastMsg" class="text-sm font-bold"
+        >Siswa berhasil di-check!</span
+      >
+    </div>
+
+    <!-- Navbar -->
     <nav class="bg-slate-800 text-white shadow-lg sticky top-0 z-40">
       <div
         class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center"
@@ -39,34 +63,68 @@
     </nav>
 
     <main class="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
-      <!-- Filter Kelas -->
+      <!-- Filter Kelas & Pencarian -->
       <div
-        class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4"
+        class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4"
       >
-        <label class="text-xs font-bold text-slate-700 uppercase"
-          >Pilih Kelas Untuk Validasi:</label
+        <div
+          class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto"
         >
-        <select
-          id="kelasFilter"
-          onchange="loadDataHSJA()"
-          class="px-4 py-2 bg-slate-50 border rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-slate-800"
+          <label
+            class="text-xs font-bold text-slate-700 uppercase whitespace-nowrap"
+            >Pilih Kelas:</label
+          >
+          <select
+            id="kelasFilter"
+            onchange="loadDataHSJA()"
+            class="w-full sm:w-48 px-4 py-2 bg-slate-50 border rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-slate-800"
+          >
+            <option value="">-- Memuat Kelas... --</option>
+          </select>
+        </div>
+
+        <!-- Input Search & Switch Tab -->
+        <div
+          class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto"
         >
-          <option value="">-- Loading Kelas --</option>
-        </select>
+          <input
+            type="text"
+            id="searchInput"
+            oninput="filterDisplayData()"
+            placeholder="Cari nama atau NISN..."
+            class="w-full sm:w-64 px-4 py-2 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-slate-800"
+          />
+          <div class="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+            <button
+              id="tabPendingBtn"
+              onclick="switchTab('pending')"
+              class="px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-800 shadow-sm transition-all"
+            >
+              Perlu Validasi
+            </button>
+            <button
+              id="tabUncheckedBtn"
+              onclick="switchTab('unchecked')"
+              class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all"
+            >
+              Belum Di-Piket
+            </button>
+          </div>
+        </div>
       </div>
 
-      <!-- List Validasi Tabel / Cards -->
+      <!-- List Validasi Tabel -->
       <div
         class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
       >
         <div
           class="p-4 border-b bg-slate-50/50 flex justify-between items-center"
         >
-          <h3 class="font-bold text-slate-800 text-sm">
+          <h3 id="tableTitle" class="font-bold text-slate-800 text-sm">
             Daftar Penilaian Hari Ini
           </h3>
           <span class="text-xs text-slate-500"
-            >Klik Centang jika sesuai, Klik Silang jika butuh koreksi</span
+            >Auto-hide siswa yang telah divalidasi</span
           >
         </div>
 
@@ -79,7 +137,7 @@
                 <th class="p-4">Siswa</th>
                 <th class="p-4">Status Piket</th>
                 <th class="p-4">Penilai Piket</th>
-                <th class="p-4">Status HSJA (Validasi)</th>
+                <th class="p-4">Status HSJA</th>
                 <th class="p-4 text-center">Aksi</th>
               </tr>
             </thead>
@@ -95,7 +153,7 @@
       </div>
     </main>
 
-    <!-- Popup Re-Klasifikasi Validasi Silang -->
+    <!-- Popup Koreksi Validasi HSJA -->
     <div
       id="modalKoreksiHSJA"
       class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
@@ -158,6 +216,9 @@
       let session = null;
       let selectedLogId = null;
       let masterKategori = [];
+      let rawLogsData = [];
+      let masterSiswaKelas = [];
+      let activeTab = "pending";
 
       document.addEventListener("DOMContentLoaded", () => {
         session = checkSession("hsja");
@@ -165,11 +226,12 @@
 
         const kw = getKategoriWaktu();
         document.getElementById("welcomeText").innerText =
-          `Selamat datang ${session.nama}, Siapkah untuk menilai pada ${kw} ini?`;
+          `Selamat ${kw} ${session.nama}`;
 
+        // OPTIMASI: Menggunakan getKelasList agar muat kelas instan
         fetch(API_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "getAdminDashboard" }),
+          body: JSON.stringify({ action: "getKelasList" }),
         })
           .then((res) => res.json())
           .then((res) => {
@@ -177,7 +239,7 @@
               const select = document.getElementById("kelasFilter");
               select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
               res.kelasList.forEach((k) => {
-                select.innerHTML += `<option value="${k.Kode_Kelas}">${k.Kode_Kelas}</option>`;
+                select.innerHTML += `<option value="${k}">${k}</option>`;
               });
             }
           });
@@ -188,25 +250,92 @@
         if (!kelas) return;
 
         showLoading(true);
-        fetch(API_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "getPenilaianHSJA", kelas: kelas }),
-        })
-          .then((res) => res.json())
-          .then((res) => {
-            showLoading(false);
-            if (res.success) {
-              masterKategori = res.kategori;
-              renderTable(res.data);
-            }
-          });
+        // Mengambil log penilaian & data siswa untuk dikomparasi
+        Promise.all([
+          fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getPenilaianHSJA", kelas: kelas }),
+          }).then((r) => r.json()),
+          fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getInitialData", kelas: kelas }),
+          }).then((r) => r.json()),
+        ]).then(([resHSJA, resInitial]) => {
+          showLoading(false);
+          if (resHSJA.success) {
+            masterKategori = resHSJA.kategori;
+            rawLogsData = resHSJA.data || [];
+          }
+          if (resInitial.success) {
+            masterSiswaKelas = resInitial.siswa || [];
+          }
+          filterDisplayData();
+        });
       }
 
-      function renderTable(data) {
+      function switchTab(tab) {
+        activeTab = tab;
+        const btnPending = document.getElementById("tabPendingBtn");
+        const btnUnchecked = document.getElementById("tabUncheckedBtn");
+
+        if (tab === "pending") {
+          btnPending.className =
+            "px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-800 shadow-sm transition-all";
+          btnUnchecked.className =
+            "px-3 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all";
+          document.getElementById("tableTitle").innerText =
+            "Daftar Perlu Validasi HSJA";
+        } else {
+          btnUnchecked.className =
+            "px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-800 shadow-sm transition-all";
+          btnPending.className =
+            "px-3 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all";
+          document.getElementById("tableTitle").innerText =
+            "Daftar Siswa Belum Di-Piket Hari Ini";
+        }
+        filterDisplayData();
+      }
+
+      function filterDisplayData() {
+        const keyword = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        const currentKW = getKategoriWaktu();
+
+        if (activeTab === "pending") {
+          // AUTO-HIDE: Filter hanya log yang BELUM divalidasi oleh HSJA (Petugas_HSJA masih '-')
+          const pendingLogs = rawLogsData.filter((item) => {
+            const isNotValidated =
+              !item.Petugas_HSJA || item.Petugas_HSJA === "-";
+            const matchSearch =
+              item.Nama_Siswa.toLowerCase().includes(keyword) ||
+              String(item.NISN_Siswa).toLowerCase().includes(keyword);
+            return isNotValidated && matchSearch;
+          });
+          renderTablePending(pendingLogs);
+        } else {
+          // NISN yang sudah dinilai oleh piket pada sesi jam ini
+          const assessedNisns = rawLogsData
+            .filter((l) => l.Kategori_Waktu === currentKW)
+            .map((l) => String(l.NISN_Siswa));
+
+          // Filter siswa kelas yang BELUM ada di log piket
+          const uncheckedSiswa = masterSiswaKelas.filter((s) => {
+            const isNotAssessed = !assessedNisns.includes(String(s.NISN));
+            const matchSearch =
+              s.Nama_Siswa.toLowerCase().includes(keyword) ||
+              String(s.NISN).toLowerCase().includes(keyword);
+            return isNotAssessed && matchSearch;
+          });
+          renderTableUnchecked(uncheckedSiswa);
+        }
+      }
+
+      function renderTablePending(data) {
         const tbody = document.getElementById("hsjaTableBody");
         if (data.length === 0) {
           tbody.innerHTML =
-            '<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada data penilaian piket untuk kelas ini hari ini.</td></tr>';
+            '<tr><td colspan="5" class="p-6 text-center text-slate-400 font-medium">🎉 Tidak ada data siswa yang perlu divalidasi.</td></tr>';
           return;
         }
 
@@ -217,26 +346,18 @@
             ? `<span class="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-lg">${item.Status_Piket} (${item.Pelanggaran_Piket})</span>`
             : `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">Aman</span>`;
 
-          const statusHSJA = item.Status_HSJA || item.Status_Piket;
-          const detailHSJA = item.Pelanggaran_HSJA || item.Pelanggaran_Piket;
-
-          const badgeHSJA =
-            statusHSJA === "Pelanggaran"
-              ? `<span class="px-2.5 py-1 bg-red-600 text-white text-xs font-bold rounded-lg">${statusHSJA} (${detailHSJA})</span>`
-              : `<span class="px-2.5 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg">Aman</span>`;
-
           tbody.innerHTML += `
-          <tr class="hover:bg-slate-50/80">
+          <tr class="hover:bg-slate-50/80 transition-all" id="row-${item.ID_Log}">
             <td class="p-4 font-bold text-slate-800">${item.Nama_Siswa}<br><span class="text-xs font-normal text-slate-400">${item.NISN_Siswa}</span></td>
             <td class="p-4">${badgePiket}</td>
             <td class="p-4 text-slate-600 text-xs">${item.Petugas_Piket}</td>
-            <td class="p-4">${badgeHSJA}</td>
+            <td class="p-4"><span class="px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-lg">Menunggu Validasi</span></td>
             <td class="p-4 text-center">
               <div class="inline-flex gap-2">
-                <button onclick="approveHSJA('${item.ID_Log}')" class="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl transition-all" title="Setujui Penilaian Piket">
+                <button onclick="approveHSJA('${item.ID_Log}', '${item.Nama_Siswa}')" class="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl transition-all" title="Setujui Penilaian">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 </button>
-                <button onclick="openKoreksiModal('${item.ID_Log}')" class="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all" title="Koreksi / Ubah Penilaian">
+                <button onclick="openKoreksiModal('${item.ID_Log}')" class="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all" title="Koreksi Penilaian">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
               </div>
@@ -245,7 +366,28 @@
         });
       }
 
-      function approveHSJA(idLog) {
+      function renderTableUnchecked(data) {
+        const tbody = document.getElementById("hsjaTableBody");
+        if (data.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" class="p-6 text-center text-slate-400 font-medium">Semua siswa kelas ini sudah diperiksa oleh Piket.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = "";
+        data.forEach((s) => {
+          tbody.innerHTML += `
+          <tr class="hover:bg-slate-50/80">
+            <td class="p-4 font-bold text-slate-800">${s.Nama_Siswa}<br><span class="text-xs font-normal text-slate-400">${s.NISN}</span></td>
+            <td class="p-4"><span class="px-2.5 py-1 bg-slate-100 text-slate-500 text-xs font-medium rounded-lg">Belum Dinilai Piket</span></td>
+            <td class="p-4 text-slate-400 text-xs">-</td>
+            <td class="p-4 text-slate-400 text-xs">-</td>
+            <td class="p-4 text-center text-xs text-slate-400">N/A</td>
+          </tr>`;
+        });
+      }
+
+      function approveHSJA(idLog, namaSiswa) {
         showLoading(true);
         fetch(API_URL, {
           method: "POST",
@@ -259,10 +401,29 @@
         })
           .then((res) => res.json())
           .then((res) => {
-            showLoading(false);
+            showLoading(false); //
             if (res.success) {
-              loadDataHSJA();
+              // Update memory lokal[cite: 19]
+              const target = rawLogsData.find(
+                (l) => String(l.ID_Log) === String(idLog),
+              );
+              if (target) target.Petugas_HSJA = session.nama;
+
+              showToast(`Siswa ${namaSiswa} berhasil di-check!`); //[cite: 19]
+              filterDisplayData(); //[cite: 19]
+            } else {
+              alert(
+                "Gagal menyimpan: " +
+                  (res.message || "Terjadi kesalahan server."),
+              );
             }
+          })
+          .catch((err) => {
+            showLoading(false); // Memastikan spinner loading selalu mati meski jaringan error[cite: 19]
+            console.error("Error Appending HSJA:", err);
+            alert(
+              "Terjadi kesalahan koneksi ke server. Coba beberapa saat lagi.",
+            );
           });
       }
 
@@ -293,15 +454,15 @@
       }
 
       function submitKoreksiHSJA() {
-        const status = document.getElementById("koreksiStatus").value;
+        const status = document.getElementById("koreksiStatus").value; //[cite: 19]
         let selectedKategori = [];
         if (status === "Pelanggaran") {
           document
             .querySelectorAll('input[name="hsja_kat"]:checked')
-            .forEach((c) => selectedKategori.push(c.value));
+            .forEach((c) => selectedKategori.push(c.value)); //[cite: 19]
         }
 
-        showLoading(true);
+        showLoading(true); //[cite: 19]
         fetch(API_URL, {
           method: "POST",
           body: JSON.stringify({
@@ -314,12 +475,40 @@
         })
           .then((res) => res.json())
           .then((res) => {
-            showLoading(false);
-            closeModalKoreksi();
+            showLoading(false); //[cite: 19]
+            closeModalKoreksi(); //[cite: 19]
             if (res.success) {
-              loadDataHSJA();
+              const target = rawLogsData.find(
+                (l) => String(l.ID_Log) === String(selectedLogId),
+              );
+              if (target) target.Petugas_HSJA = session.nama;
+
+              showToast("Validasi koreksi berhasil disimpan!"); //[cite: 19]
+              filterDisplayData(); //[cite: 19]
+            } else {
+              alert(
+                "Gagal melakukan koreksi: " +
+                  (res.message || "Terjadi kesalahan server."),
+              );
             }
+          })
+          .catch((err) => {
+            showLoading(false); //[cite: 19]
+            closeModalKoreksi(); //[cite: 19]
+            console.error("Error Koreksi HSJA:", err);
+            alert(
+              "Gagal terhubung ke database. Periksa koneksi internet Anda.",
+            );
           });
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toastSuccess");
+        document.getElementById("toastMsg").innerText = msg;
+        toast.classList.remove("hidden");
+        setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 3000);
       }
 
       function logout() {

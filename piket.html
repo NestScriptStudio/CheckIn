@@ -192,11 +192,13 @@
     </div>
 
     <script src="js/app.js"></script>
+    <script src="js/app.js"></script>
     <script>
       let session = null;
       let piketInfo = null;
       let masterKategori = [];
       let masterSiswa = [];
+      let todayLogs = []; // Caching log penilaian hari ini
 
       document.addEventListener("DOMContentLoaded", () => {
         session = checkSession("kelas");
@@ -224,13 +226,55 @@
 
               const kw = getKategoriWaktu();
               document.getElementById("welcomeText").innerText =
-                `Selamat datang ${res.nama}, Siapkah untuk menilai pada ${kw} ini?`;
+                `Selamat ${kw} ${res.nama}`;
 
               loadInitialData();
             } else {
               showModal("Login Piket Gagal", res.message, true);
             }
+          })
+          .catch((err) => {
+            showLoading(false);
+            showModal("Error", "Gagal terhubung ke server", true);
           });
+      }
+
+      // FUNGSI BARU: Khusus untuk merender dropdown siswa dengan menyaring yang sudah dinilai pada sesi aktif
+      function renderSiswaDropdown() {
+        const select = document.getElementById("siswa-select");
+        select.innerHTML = '<option value="">-- Pilih Siswa --</option>';
+
+        const currentKW = getKategoriWaktu();
+
+        // Dapatkan daftar NISN yang sudah dinilai pada Kategori Waktu saat ini
+        const assessedNisns = todayLogs
+          .filter((l) => l.Kategori_Waktu === currentKW)
+          .map((l) => String(l.NISN_Siswa));
+
+        const fragment = document.createDocumentFragment();
+        let availableCount = 0;
+
+        masterSiswa.forEach((s) => {
+          // Hanya tampilkan siswa yang BELUM dinilai pada sesi waktu berjalan
+          if (!assessedNisns.includes(String(s.NISN))) {
+            const opt = document.createElement("option");
+            opt.value = s.NISN;
+            opt.textContent = `${s.Nama_Siswa} (${s.NISN})`;
+            fragment.appendChild(opt);
+            availableCount++;
+          }
+        });
+
+        select.appendChild(fragment);
+
+        // Jika seluruh siswa dalam kelas sudah dinilai pada sesi ini
+        if (availableCount === 0 && masterSiswa.length > 0) {
+          const optDone = document.createElement("option");
+          optDone.value = "";
+          optDone.textContent = "🎉 Semua siswa sudah dinilai pada sesi ini";
+          optDone.disabled = true;
+          select.appendChild(optDone);
+        }
       }
 
       function loadInitialData() {
@@ -248,23 +292,26 @@
             if (res.success) {
               masterSiswa = res.siswa;
               masterKategori = res.kategori;
+              todayLogs = res.todayLogs || [];
 
-              const select = document.getElementById("siswa-select");
-              select.innerHTML = '<option value="">-- Pilih Siswa --</option>';
-              res.siswa.forEach((s) => {
-                select.innerHTML += `<option value="${s.NISN}">${s.Nama_Siswa} (${s.NISN})</option>`;
-              });
+              // Panggil fungsi render dropdown yang disaring
+              renderSiswaDropdown();
 
+              // Render Kategori Pelanggaran
               const katContainer = document.getElementById("kategoriContainer");
               katContainer.innerHTML = "";
               res.kategori.forEach((k) => {
                 katContainer.innerHTML += `
-              <label class="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer text-sm">
-                <input type="checkbox" name="kat_pelanggaran" value="${k.Nama_Kategori}" class="w-4 h-4 text-red-600 rounded">
-                <span class="text-slate-700 font-medium">${k.Nama_Kategori}</span>
-              </label>`;
+    <label class="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer text-sm">
+      <input type="checkbox" name="kat_pelanggaran" value="${k.Nama_Kategori}" class="w-4 h-4 text-red-600 rounded">
+      <span class="text-slate-700 font-medium">${k.Nama_Kategori}</span>
+    </label>`;
               });
             }
+          })
+          .catch((err) => {
+            showLoading(false);
+            showModal("Error", "Gagal memuat data awal", true);
           });
       }
 
@@ -275,25 +322,27 @@
           return;
         }
 
-        showLoading(true);
-        fetch(API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "checkPenilaianSiswa",
-            nisn: nisn,
-            kategori_waktu: getKategoriWaktu(),
-          }),
-        })
-          .then((res) => res.json())
-          .then((res) => {
-            showLoading(false);
-            if (res.already) {
-              document.getElementById("actionArea").classList.add("hidden");
-              showModal("Pemberitahuan", res.message, false);
-            } else {
-              document.getElementById("actionArea").classList.remove("hidden");
-            }
-          });
+        const currentKatWaktu = getKategoriWaktu();
+
+        const found = todayLogs.find(
+          (l) =>
+            String(l.NISN_Siswa) === String(nisn) &&
+            l.Kategori_Waktu === currentKatWaktu,
+        );
+
+        if (found) {
+          document.getElementById("actionArea").classList.add("hidden");
+          const statusStr = found.Status_HSJA || found.Status_Piket;
+          const detailStr =
+            found.Pelanggaran_HSJA || found.Pelanggaran_Piket || "Aman";
+          showModal(
+            "Pemberitahuan",
+            `Siswa ini sudah dinilai untuk sesi ${currentKatWaktu} ini dengan status: [${statusStr} - ${detailStr}]`,
+            false,
+          );
+        } else {
+          document.getElementById("actionArea").classList.remove("hidden");
+        }
       }
 
       function openModalPelanggaran() {
@@ -328,12 +377,13 @@
         }
 
         showLoading(true);
+        const currentKW = getKategoriWaktu();
         const payload = {
           action: "submitPenilaianPiket",
           kelas: session.kelas,
           nisn_siswa: nisn,
           nama_siswa: siswaObj ? siswaObj.Nama_Siswa : "-",
-          kategori_waktu: getKategoriWaktu(),
+          kategori_waktu: currentKW,
           status_piket: status,
           pelanggaran_piket: selectedPelanggaran.join(", "),
           petugas_piket: piketInfo.nama,
@@ -345,13 +395,32 @@
             showLoading(false);
             closeModalPelanggaran();
             if (res.success) {
+              // Update cache lokal
+              todayLogs.push({
+                NISN_Siswa: nisn,
+                Kategori_Waktu: currentKW,
+                Status_Piket: status,
+                Pelanggaran_Piket: selectedPelanggaran.join(", ") || "Aman",
+              });
+
+              // Reset Uncheck Pelanggaran
+              document
+                .querySelectorAll('input[name="kat_pelanggaran"]')
+                .forEach((cb) => (cb.checked = false));
+
               showModal("Berhasil", res.message, false, () => {
+                // Render ulang dropdown agar siswa yang baru saja dinilai langsung disembunyikan
+                renderSiswaDropdown();
                 select.value = "";
                 document.getElementById("actionArea").classList.add("hidden");
               });
             } else {
               showModal("Gagal", res.message, true);
             }
+          })
+          .catch((err) => {
+            showLoading(false);
+            showModal("Error", "Gagal mengirim penilaian", true);
           });
       }
 
