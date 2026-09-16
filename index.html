@@ -161,7 +161,7 @@
         </button>
       </form>
 
-      <!-- Form Mode Guru -->
+      <!-- Form Mode Guru (Yang Sudah Diperbaiki) -->
       <form
         id="form-guru"
         onsubmit="handleLogin(event, 'guru')"
@@ -170,26 +170,26 @@
         <div>
           <label
             class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
-            >Nama Guru</label
+            >NIP</label
           >
           <input
             type="text"
-            id="guru-nama"
+            id="guru-nip"
             required
-            placeholder="Nama Lengkap dengan Gelar"
+            placeholder="Masukkan NIP"
             class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
           />
         </div>
         <div>
           <label
             class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
-            >NIP (Sebagai Sandi)</label
+            >Password</label
           >
           <input
             type="password"
-            id="guru-nip"
+            id="guru-pass"
             required
-            placeholder="Masukkan NIP"
+            placeholder="••••••••"
             class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
           />
         </div>
@@ -291,15 +291,18 @@
           payload.password = document.getElementById("hsja-pass").value;
         } else if (role === "guru") {
           payload.action = "loginGuru";
-          payload.nama = document.getElementById("guru-nama").value;
-          payload.nip = document.getElementById("guru-nip").value;
+          payload.nip = document.getElementById("guru-nip").value.trim();
+          payload.password = document.getElementById("guru-pass").value.trim();
         } else if (role === "admin") {
           payload.action = "loginAdmin";
           payload.username = document.getElementById("admin-user").value;
           payload.password = document.getElementById("admin-pass").value;
         }
 
-        fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        })
           .then((res) => res.json())
           .then((res) => {
             showLoading(false);

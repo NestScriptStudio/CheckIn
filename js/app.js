@@ -1,6 +1,6 @@
 // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbz1p78eLjz_-Em1LsbWauvNDwueeZlhktmBAYMjeynHLR0aBxeGbyy0lrWgcPh6g9aPYQ/exec";
+  "https://script.google.com/macros/s/AKfycbyQzH-WAqUJUP3hvInijS51iWJZA7tJf33_tfb2mz0qctdzU1Ks4FgdAJVpVVJ6RJtKkg/exec";
 
 // Utilitas Kategori Waktu Otomatis
 function getKategoriWaktu() {
