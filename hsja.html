@@ -220,13 +220,25 @@
       let masterSiswaKelas = [];
       let activeTab = "pending";
 
+      // Helper Fungsi Ambil Nama Petugas Secara Menyeluruh
+      function getNamaPetugas(sess) {
+        if (!sess) return "Petugas";
+        if (sess.data && sess.data.nama) return sess.data.nama;
+        if (sess.data && sess.data.Nama_Petugas) return sess.data.Nama_Petugas;
+        if (sess.nama) return sess.nama;
+        if (sess.nama_petugas) return sess.nama_petugas;
+        if (sess.Nama_Petugas) return sess.Nama_Petugas;
+        return "Petugas";
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         session = checkSession("hsja");
         if (!session) return;
 
         const kw = getKategoriWaktu();
+        const namaUser = getNamaPetugas(session);
         document.getElementById("welcomeText").innerText =
-          `Selamat ${kw} ${session.nama}`;
+          `Selamat ${kw}, ${namaUser}`;
 
         // OPTIMASI: Menggunakan getKelasList agar muat kelas instan
         fetch(API_URL, {
@@ -388,6 +400,7 @@
       }
 
       function approveHSJA(idLog, namaSiswa) {
+        const namaUser = getNamaPetugas(session);
         showLoading(true);
         fetch(API_URL, {
           method: "POST",
@@ -396,21 +409,20 @@
             id_log: idLog,
             status_hsja: "Aman",
             pelanggaran_hsja: "-",
-            petugas_hsja: session.nama,
+            petugas_hsja: namaUser,
           }),
         })
           .then((res) => res.json())
           .then((res) => {
-            showLoading(false); //
+            showLoading(false);
             if (res.success) {
-              // Update memory lokal[cite: 19]
               const target = rawLogsData.find(
                 (l) => String(l.ID_Log) === String(idLog),
               );
-              if (target) target.Petugas_HSJA = session.nama;
+              if (target) target.Petugas_HSJA = namaUser;
 
-              showToast(`Siswa ${namaSiswa} berhasil di-check!`); //[cite: 19]
-              filterDisplayData(); //[cite: 19]
+              showToast(`Siswa ${namaSiswa} berhasil di-check!`);
+              filterDisplayData();
             } else {
               alert(
                 "Gagal menyimpan: " +
@@ -419,7 +431,7 @@
             }
           })
           .catch((err) => {
-            showLoading(false); // Memastikan spinner loading selalu mati meski jaringan error[cite: 19]
+            showLoading(false);
             console.error("Error Appending HSJA:", err);
             alert(
               "Terjadi kesalahan koneksi ke server. Coba beberapa saat lagi.",
@@ -454,15 +466,16 @@
       }
 
       function submitKoreksiHSJA() {
-        const status = document.getElementById("koreksiStatus").value; //[cite: 19]
+        const namaUser = getNamaPetugas(session);
+        const status = document.getElementById("koreksiStatus").value;
         let selectedKategori = [];
         if (status === "Pelanggaran") {
           document
             .querySelectorAll('input[name="hsja_kat"]:checked')
-            .forEach((c) => selectedKategori.push(c.value)); //[cite: 19]
+            .forEach((c) => selectedKategori.push(c.value));
         }
 
-        showLoading(true); //[cite: 19]
+        showLoading(true);
         fetch(API_URL, {
           method: "POST",
           body: JSON.stringify({
@@ -470,21 +483,21 @@
             id_log: selectedLogId,
             status_hsja: status,
             pelanggaran_hsja: selectedKategori.join(", ") || "-",
-            petugas_hsja: session.nama,
+            petugas_hsja: namaUser,
           }),
         })
           .then((res) => res.json())
           .then((res) => {
-            showLoading(false); //[cite: 19]
-            closeModalKoreksi(); //[cite: 19]
+            showLoading(false);
+            closeModalKoreksi();
             if (res.success) {
               const target = rawLogsData.find(
                 (l) => String(l.ID_Log) === String(selectedLogId),
               );
-              if (target) target.Petugas_HSJA = session.nama;
+              if (target) target.Petugas_HSJA = namaUser;
 
-              showToast("Validasi koreksi berhasil disimpan!"); //[cite: 19]
-              filterDisplayData(); //[cite: 19]
+              showToast("Validasi koreksi berhasil disimpan!");
+              filterDisplayData();
             } else {
               alert(
                 "Gagal melakukan koreksi: " +
@@ -493,8 +506,8 @@
             }
           })
           .catch((err) => {
-            showLoading(false); //[cite: 19]
-            closeModalKoreksi(); //[cite: 19]
+            showLoading(false);
+            closeModalKoreksi();
             console.error("Error Koreksi HSJA:", err);
             alert(
               "Gagal terhubung ke database. Periksa koneksi internet Anda.",
