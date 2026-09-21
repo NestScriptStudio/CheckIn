@@ -407,8 +407,8 @@
           body: JSON.stringify({
             action: "submitValidasiHSJA",
             id_log: idLog,
-            status_hsja: "Aman",
-            pelanggaran_hsja: "-",
+            status_hsja: "Sesuai",
+            pelanggaran_hsja: "Sesuai Petugas Piket",
             petugas_hsja: namaUser,
           }),
         })
@@ -482,7 +482,8 @@
             action: "submitValidasiHSJA",
             id_log: selectedLogId,
             status_hsja: status,
-            pelanggaran_hsja: selectedKategori.join(", ") || "-",
+            pelanggaran_hsja:
+              selectedKategori.join(", ") || "Pelanggaran Dibatalkan",
             petugas_hsja: namaUser,
           }),
         })
