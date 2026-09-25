@@ -71,6 +71,14 @@
           >
             Verifikasi Petugas
           </button>
+          <button
+            type="button"
+            id="btn-back-login"
+            onclick="backToLogin()"
+            class="w-full py-3 mt-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            <i class="fas fa-arrow-left"></i> Kembali ke Login Utama
+          </button>
         </form>
       </div>
     </div>
@@ -106,7 +114,7 @@
       <div
         class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-6"
       >
-        <!-- HEADER & FILTER KELAS -->
+        <!-- HEADER -->
         <div
           class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-100"
         >
@@ -127,14 +135,6 @@
             >
               <i class="fas fa-clock"></i> Sesi: Memuat...
             </div>
-
-            <select
-              id="kelasFilter"
-              onchange="renderTableData()"
-              class="px-3 py-1.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50"
-            >
-              <option value="">Semua Kelas</option>
-            </select>
           </div>
         </div>
 
@@ -148,7 +148,7 @@
               type="text"
               id="searchInput"
               onkeyup="renderTableData()"
-              placeholder="Cari nama atau kelas siswa..."
+              placeholder="Cari nama siswa..."
               class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-50/50"
             />
           </div>
@@ -301,6 +301,11 @@
       let todayLogs = [];
       let selectedSiswa = null;
 
+      function backToLogin() {
+        localStorage.removeItem("app_session");
+        window.location.href = "index.html";
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         session = checkSession("kelas");
         if (!session) return;
@@ -338,11 +343,11 @@
 
               document.getElementById("piketAuthModal").classList.add("hidden");
 
-              const kw = getKategoriWaktu();
-              document.getElementById("welcomeText").innerText =
-                `Selamat ${kw}, ${namaPetugasVal}`;
-              document.getElementById("sesiBadge").innerHTML =
-                `<i class="fas fa-clock"></i> Sesi: ${kw}`;
+              const sapaan = getSapaanNavbar();
+              const kw = getKategoriWaktu(); // Tetap digunakan untuk sesiBadge, DB, & filter!
+
+              welcomeText.innerText = `Selamat ${sapaan}, ${namaPetugasVal}`;
+              sesiBadge.innerHTML = `<i class="fas fa-clock"></i> Sesi: ${kw}`; // Tetap Pagi/Siang
 
               loadInitialData();
             } else {
@@ -354,6 +359,7 @@
             showModal("Error", "Gagal terhubung ke server", true);
           });
       }
+
       // MEMUAT DATA SISWA & KATEGORI PELANGGARAN DARI BACKEND
       function loadInitialData() {
         showLoading(true);
@@ -372,7 +378,6 @@
               masterKategori = res.kategori || [];
               todayLogs = res.todayLogs || [];
 
-              populateKelasFilter();
               renderTableData();
               renderKategoriPelanggaran();
             } else {
@@ -385,22 +390,7 @@
           });
       }
 
-      function populateKelasFilter() {
-        const filter = document.getElementById("kelasFilter");
-        const kelasList = [
-          ...new Set(masterSiswa.map((item) => item.Kelas || item.kelas)),
-        ]
-          .filter(Boolean)
-          .sort();
-
-        filter.innerHTML = `<option value="">Semua Kelas</option>`;
-        kelasList.forEach((k) => {
-          filter.innerHTML += `<option value="${k}">${k}</option>`;
-        });
-      }
-
       function renderTableData() {
-        const selectedKelas = document.getElementById("kelasFilter").value;
         const searchVal = document
           .getElementById("searchInput")
           .value.toLowerCase();
@@ -415,15 +405,13 @@
         const availableSiswa = masterSiswa.filter((s) => {
           const nisnStr = String(s.NISN || s.nisn);
           const namaStr = (s.Nama_Siswa || s.nama || "").toLowerCase();
-          const kelasStr = s.Kelas || s.kelas || "";
+          const kelasStr = (s.Kelas || s.kelas || "").toLowerCase();
 
           const isUnassessed = !assessedNisns.includes(nisnStr);
-          const matchKelas = !selectedKelas || kelasStr === selectedKelas;
           const matchSearch =
-            namaStr.includes(searchVal) ||
-            kelasStr.toLowerCase().includes(searchVal);
+            namaStr.includes(searchVal) || kelasStr.includes(searchVal);
 
-          return isUnassessed && matchKelas && matchSearch;
+          return isUnassessed && matchSearch;
         });
 
         if (availableSiswa.length === 0) {

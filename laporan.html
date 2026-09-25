@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rekapitulasi Laporan Guru</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
@@ -124,9 +125,10 @@
         session = checkSession("guru");
         if (!session) return;
 
+        const sapaan = getSapaanNavbar();
         const kw = getKategoriWaktu();
         document.getElementById("welcomeText").innerText =
-          `Selamat ${kw} ${session.nama}`;
+          `Selamat ${sapaan}, ${session.nama}`;
 
         fetch(API_URL, {
           method: "POST",

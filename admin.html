@@ -6,7 +6,7 @@
     <title>Panel Admin - Sistem Pelanggaran Siswa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
@@ -669,53 +669,297 @@
       }
 
       function processExportRekapExcel() {
-        const startVal = document.getElementById("rekapStartDate").value;
-        const endVal = document.getElementById("rekapEndDate").value;
-
-        const filteredLogs = (dashboardData.logs || []).filter((l) => {
-          if (l.Status_HSJA !== "Pelanggaran") return false;
-          let logDate = l.Tanggal ? String(l.Tanggal).substring(0, 10) : "";
-          if (startVal && logDate < startVal) return false;
-          if (endVal && logDate > endVal) return false;
-          return true;
-        });
-
-        if (filteredLogs.length === 0) {
-          showModal(
-            "Peringatan",
-            "Tidak ada data pelanggaran pada rentang tanggal tersebut.",
-            true,
-          );
+        if (!dashboardData) {
+          showModal("Peringatan", "Data dashboard belum dimuat.", true);
           return;
         }
 
-        const logsByKelas = {};
-        filteredLogs.forEach((l) => {
-          const k = l.Kelas || "Tanpa_Kelas";
-          if (!logsByKelas[k]) logsByKelas[k] = [];
-          logsByKelas[k].push({
-            "ID Log": l.ID_Log,
-            Tanggal: l.Tanggal,
-            Waktu: l.Kategori_Waktu,
-            NISN: l.NISN_Siswa,
-            "Nama Siswa": l.Nama_Siswa,
-            "Detail Pelanggaran": l.Pelanggaran_HSJA,
-          });
+        const startVal = document.getElementById("rekapStartDate").value;
+        const endVal = document.getElementById("rekapEndDate").value;
+
+        // Helper Sanitasi Teks (Menghapus spasi ganda, simbol, & case insensitive)
+        const cleanStr = (val) =>
+          String(val || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
+
+        // Helper Normalisasi NISN (Menghapus leading zeros agar '00123' match dengan '123')
+        const cleanNisn = (val) =>
+          String(val || "")
+            .trim()
+            .replace(/^0+/, "");
+
+        // 1. Ambil Master Data Siswa & Kategori
+        const masterSiswa =
+          dashboardData.siswaList || dashboardData.siswa || [];
+        const masterKategori =
+          dashboardData.kategoriList || dashboardData.kategori || [];
+
+        if (masterSiswa.length === 0) {
+          showModal("Peringatan", "Data siswa tidak ditemukan.", true);
+          return;
+        }
+
+        // Ambil daftar nama kategori unik
+        const kategoriNames = masterKategori
+          .map((k) => k.Nama_Kategori || k.nama_kategori || k)
+          .filter(Boolean);
+
+        // Filter logs berdasarkan kriteria tanggal & keberadaan data
+        const filteredLogs = (dashboardData.logs || []).filter((l) => {
+          // Abaikan log kosong
+          if (!l.NISN_Siswa && !l.Nama_Siswa) return false;
+
+          // Filter Tanggal
+          let logDateStr = "";
+          if (l.Tanggal) {
+            if (l.Tanggal instanceof Date) {
+              const yyyy = l.Tanggal.getFullYear();
+              const mm = String(l.Tanggal.getMonth() + 1).padStart(2, "0");
+              const dd = String(l.Tanggal.getDate()).padStart(2, "0");
+              logDateStr = `${yyyy}-${mm}-${dd}`;
+            } else {
+              logDateStr = String(l.Tanggal).substring(0, 10);
+            }
+          }
+
+          if (startVal && logDateStr && logDateStr < startVal) return false;
+          if (endVal && logDateStr && logDateStr > endVal) return false;
+
+          return true;
         });
 
+        // Grouping master siswa berdasarkan Kelas
+        const siswaByKelas = {};
+        masterSiswa.forEach((s) => {
+          const k = s.Kelas || s.kelas || "Tanpa_Kelas";
+          if (!siswaByKelas[k]) siswaByKelas[k] = [];
+          siswaByKelas[k].push(s);
+        });
+
+        // Inisialisasi Workbook
         const wb = XLSX.utils.book_new();
-        Object.keys(logsByKelas).forEach((kelas) => {
-          const ws = XLSX.utils.json_to_sheet(logsByKelas[kelas]);
-          const safeSheetName = kelas
-            .replace(/[:\\/?*\[\]]/g, "_")
-            .substring(0, 30);
-          XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
-        });
 
-        XLSX.writeFile(wb, `Rekap_Pelanggaran_Per_Kelas.xlsx`);
+        // Style Header & Data
+        const headerStyle = {
+          fill: { fgColor: { rgb: "FFFF00" } }, // Yellow
+          font: { name: "Arial", sz: 10, bold: true },
+          alignment: {
+            horizontal: "center",
+            vertical: "center",
+            wrapText: true,
+          },
+          border: {
+            top: { style: "thin", color: { auto: 1 } },
+            bottom: { style: "thin", color: { auto: 1 } },
+            left: { style: "thin", color: { auto: 1 } },
+            right: { style: "thin", color: { auto: 1 } },
+          },
+        };
+
+        const dataStyle = {
+          font: { name: "Arial", sz: 10 },
+          alignment: { vertical: "center" },
+          border: {
+            top: { style: "thin", color: { auto: 1 } },
+            bottom: { style: "thin", color: { auto: 1 } },
+            left: { style: "thin", color: { auto: 1 } },
+            right: { style: "thin", color: { auto: 1 } },
+          },
+        };
+
+        const dataCenterStyle = {
+          ...dataStyle,
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+
+        // 2. Loop Setiap Kelas untuk Dibuatkan Sheet
+        Object.keys(siswaByKelas)
+          .sort()
+          .forEach((kelas) => {
+            const daftarSiswa = siswaByKelas[kelas];
+
+            const row1 = ["No", "Nama", "Kelas"];
+            const row2 = ["", "", ""];
+
+            // Header Checkin Pagi
+            row1.push("Checkin Pagi");
+            kategoriNames.forEach((kat) => row2.push(kat));
+            for (let i = 1; i < kategoriNames.length; i++) row1.push("");
+
+            // Header Checkin Siang
+            row1.push("Checkin Siang");
+            kategoriNames.forEach((kat) => row2.push(kat));
+            for (let i = 1; i < kategoriNames.length; i++) row1.push("");
+
+            // Kolom Detail
+            row1.push("Detail Waktu/Keterangan");
+            row2.push("");
+
+            const sheetData = [row1, row2];
+
+            const merges = [
+              { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+              { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+              { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+              {
+                s: { r: 0, c: 3 },
+                e: { r: 0, c: 3 + kategoriNames.length - 1 },
+              },
+              {
+                s: { r: 0, c: 3 + kategoriNames.length },
+                e: { r: 0, c: 3 + kategoriNames.length * 2 - 1 },
+              },
+              {
+                s: { r: 0, c: 3 + kategoriNames.length * 2 },
+                e: { r: 1, c: 3 + kategoriNames.length * 2 },
+              },
+            ];
+
+            // 3. Iterasi Data Siswa
+            daftarSiswa.forEach((siswa, index) => {
+              const rawNisn = siswa.NISN || siswa.nisn || "";
+              const cleanNisnSiswa = cleanNisn(rawNisn);
+              const cleanNamaSiswa = cleanStr(siswa.Nama_Siswa || siswa.nama);
+              const cleanKelasSiswa = cleanStr(kelas);
+
+              // Matching Log:
+              // Prioritas 1: Matching NISN
+              // Prioritas 2 (Fallback): Matching Nama + Kelas (mencegah NISN beda tipe data)
+              const logsSiswa = filteredLogs.filter((l) => {
+                const logNisn = cleanNisn(l.NISN_Siswa);
+                if (cleanNisnSiswa && logNisn && cleanNisnSiswa === logNisn) {
+                  return true;
+                }
+                const logNama = cleanStr(l.Nama_Siswa);
+                const logKelas = cleanStr(l.Kelas);
+                return (
+                  cleanNamaSiswa &&
+                  logNama === cleanNamaSiswa &&
+                  (!logKelas || logKelas === cleanKelasSiswa)
+                );
+              });
+
+              const countPagi = {};
+              const countSiang = {};
+              kategoriNames.forEach((k) => {
+                countPagi[k] = 0;
+                countSiang[k] = 0;
+              });
+
+              const detailKeterangan = [];
+
+              logsSiswa.forEach((log) => {
+                const waktuSesi = String(
+                  log.Kategori_Waktu || "",
+                ).toLowerCase();
+
+                // Ambil string pelanggaran valid
+                let pelString = log.Pelanggaran_HSJA;
+                if (
+                  !pelString ||
+                  pelString === "Sesuai Petugas Piket" ||
+                  pelString === "-"
+                ) {
+                  pelString = log.Pelanggaran_Piket || "";
+                }
+
+                if (!pelString || pelString === "-") return;
+
+                const listPel = pelString
+                  .split(",")
+                  .map((p) => p.trim())
+                  .filter(Boolean);
+
+                let formattedTime = log.Tanggal || "";
+                if (formattedTime.length >= 10) {
+                  const t = new Date(formattedTime);
+                  if (!isNaN(t.getTime())) {
+                    const dd = String(t.getDate()).padStart(2, "0");
+                    const mm = String(t.getMonth() + 1).padStart(2, "0");
+                    const yyyy = t.getFullYear();
+                    const hh = String(t.getHours()).padStart(2, "0");
+                    const min = String(t.getMinutes()).padStart(2, "0");
+                    formattedTime = `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+                  }
+                }
+
+                listPel.forEach((pel) => {
+                  const cleanPel = cleanStr(pel);
+                  const matchedKategori = kategoriNames.find(
+                    (k) => cleanStr(k) === cleanPel,
+                  );
+
+                  if (matchedKategori) {
+                    if (waktuSesi.includes("pagi")) {
+                      countPagi[matchedKategori] =
+                        (countPagi[matchedKategori] || 0) + 1;
+                      detailKeterangan.push(
+                        `${formattedTime} (${matchedKategori} - Pagi)`,
+                      );
+                    } else if (waktuSesi.includes("siang")) {
+                      countSiang[matchedKategori] =
+                        (countSiang[matchedKategori] || 0) + 1;
+                      detailKeterangan.push(
+                        `${formattedTime} (${matchedKategori} - Siang)`,
+                      );
+                    }
+                  }
+                });
+              });
+
+              // Susun baris tabel
+              const row = [index + 1, siswa.Nama_Siswa || siswa.nama, kelas];
+
+              kategoriNames.forEach((k) => {
+                row.push(countPagi[k] > 0 ? countPagi[k] : "");
+              });
+
+              kategoriNames.forEach((k) => {
+                row.push(countSiang[k] > 0 ? countSiang[k] : "");
+              });
+
+              row.push(detailKeterangan.join(", "));
+              sheetData.push(row);
+            });
+
+            // 4. Buat Sheet & Format Excel
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws["!merges"] = merges;
+
+            const colWidths = [{ wch: 5 }, { wch: 25 }, { wch: 12 }];
+            for (let i = 0; i < kategoriNames.length * 2; i++) {
+              colWidths.push({ wch: 15 });
+            }
+            colWidths.push({ wch: 45 });
+            ws["!cols"] = colWidths;
+
+            const range = XLSX.utils.decode_range(ws["!ref"]);
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+              for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cell_address]) continue;
+
+                if (R === 0 || R === 1) {
+                  ws[cell_address].s = headerStyle;
+                } else {
+                  ws[cell_address].s =
+                    C === 1 || C === 3 + kategoriNames.length * 2
+                      ? dataStyle
+                      : dataCenterStyle;
+                }
+              }
+            }
+
+            const safeSheetName = kelas
+              .replace(/[:\\/?*\[\]]/g, "_")
+              .substring(0, 30);
+            XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+          });
+
+        XLSX.writeFile(wb, `Rekapitulasi_Pelanggaran_Siswa.xlsx`);
         closeRekapModal();
       }
-
       /* ==========================================================
          FITUR PERIZINAN PETUGAS (SEARCH & IZINKAN)
          ========================================================== */

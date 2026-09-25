@@ -220,7 +220,6 @@
       let masterSiswaKelas = [];
       let activeTab = "pending";
 
-      // Helper Fungsi Ambil Nama Petugas Secara Menyeluruh
       function getNamaPetugas(sess) {
         if (!sess) return "Petugas";
         if (sess.data && sess.data.nama) return sess.data.nama;
@@ -235,12 +234,12 @@
         session = checkSession("hsja");
         if (!session) return;
 
+        const sapaan = getSapaanNavbar();
         const kw = getKategoriWaktu();
         const namaUser = getNamaPetugas(session);
         document.getElementById("welcomeText").innerText =
-          `Selamat ${kw}, ${namaUser}`;
+          `Selamat ${sapaan}, ${namaUser}`;
 
-        // OPTIMASI: Menggunakan getKelasList agar muat kelas instan
         fetch(API_URL, {
           method: "POST",
           body: JSON.stringify({ action: "getKelasList" }),
@@ -262,7 +261,6 @@
         if (!kelas) return;
 
         showLoading(true);
-        // Mengambil log penilaian & data siswa untuk dikomparasi
         Promise.all([
           fetch(API_URL, {
             method: "POST",
@@ -315,7 +313,6 @@
         const currentKW = getKategoriWaktu();
 
         if (activeTab === "pending") {
-          // AUTO-HIDE: Filter hanya log yang BELUM divalidasi oleh HSJA (Petugas_HSJA masih '-')
           const pendingLogs = rawLogsData.filter((item) => {
             const isNotValidated =
               !item.Petugas_HSJA || item.Petugas_HSJA === "-";
@@ -326,12 +323,10 @@
           });
           renderTablePending(pendingLogs);
         } else {
-          // NISN yang sudah dinilai oleh piket pada sesi jam ini
           const assessedNisns = rawLogsData
             .filter((l) => l.Kategori_Waktu === currentKW)
             .map((l) => String(l.NISN_Siswa));
 
-          // Filter siswa kelas yang BELUM ada di log piket
           const uncheckedSiswa = masterSiswaKelas.filter((s) => {
             const isNotAssessed = !assessedNisns.includes(String(s.NISN));
             const matchSearch =
@@ -399,16 +394,25 @@
         });
       }
 
+      // APPROVE HSJA: Mengirim 'Sesuai' agar backend mereplikasi penuh hasil Piket
       function approveHSJA(idLog, namaSiswa) {
+        // 1. Cari item log berdasarkan ID
+        const logItem = rawLogsData.find(
+          (l) => String(l.ID_Log) === String(idLog),
+        );
+        if (!logItem) return;
+
         const namaUser = getNamaPetugas(session);
         showLoading(true);
+
+        // 2. Kirim Status_Piket dan Pelanggaran_Piket milik Petugas Piket ke Backend
         fetch(API_URL, {
           method: "POST",
           body: JSON.stringify({
             action: "submitValidasiHSJA",
             id_log: idLog,
-            status_hsja: "Sesuai",
-            pelanggaran_hsja: "Sesuai Petugas Piket",
+            status_hsja: logItem.Status_Piket, // Menggunakan nilai asli dari Piket (misal: "Pelanggaran" atau "Aman")
+            pelanggaran_hsja: logItem.Pelanggaran_Piket, // Menggunakan detail asli dari Piket (misal: "Seragam")
             petugas_hsja: namaUser,
           }),
         })
@@ -416,12 +420,11 @@
           .then((res) => {
             showLoading(false);
             if (res.success) {
-              const target = rawLogsData.find(
-                (l) => String(l.ID_Log) === String(idLog),
-              );
-              if (target) target.Petugas_HSJA = namaUser;
+              logItem.Petugas_HSJA = namaUser;
+              logItem.Status_HSJA = logItem.Status_Piket;
+              logItem.Pelanggaran_HSJA = logItem.Pelanggaran_Piket;
 
-              showToast(`Siswa ${namaSiswa} berhasil di-check!`);
+              showToast(`Siswa ${namaSiswa} berhasil divalidasi!`);
               filterDisplayData();
             } else {
               alert(
@@ -495,7 +498,12 @@
               const target = rawLogsData.find(
                 (l) => String(l.ID_Log) === String(selectedLogId),
               );
-              if (target) target.Petugas_HSJA = namaUser;
+              if (target) {
+                target.Petugas_HSJA = namaUser;
+                target.Status_HSJA = status;
+                target.Pelanggaran_HSJA =
+                  selectedKategori.join(", ") || "Pelanggaran Dibatalkan";
+              }
 
               showToast("Validasi koreksi berhasil disimpan!");
               filterDisplayData();

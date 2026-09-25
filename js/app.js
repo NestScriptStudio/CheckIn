@@ -1,12 +1,30 @@
 // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbxg9eN8Ec04hGYtno-J-toDeCWMzgKa1vDnLMA22wwXwfMSjWJocGkfEr3X3e_nMvA4Rw/exec";
+  "https://script.google.com/macros/s/AKfycbzObXvQsTha4S_rtT_GgFkAXZqDXk8w13j_SGvRXQk-ts6wHQm3xD2VPXbp2ThRbg81VQ/exec";
 
 // Utilitas Kategori Waktu Otomatis
 function getKategoriWaktu() {
   const now = new Date();
   const hours = now.getHours();
   return hours < 11 ? "Pagi" : "Siang";
+}
+
+// === FUNGSI BARU (KHUSUS SAPAAN NAVBAR) ===
+function getSapaanNavbar() {
+  const now = new Date();
+  const hours = now.getHours();
+
+  if (hours >= 0 && hours < 4) {
+    return "Dini Hari"; // 00:00 - 03:59
+  } else if (hours >= 4 && hours < 11) {
+    return "Pagi"; // 04:00 - 10:59
+  } else if (hours >= 11 && hours < 15) {
+    return "Siang"; // 11:00 - 14:59
+  } else if (hours >= 15 && hours < 18) {
+    return "Sore"; // 15:00 - 17:59
+  } else {
+    return "Malam"; // 18:00 - 23:59
+  }
 }
 
 // Modal Notification System Global
