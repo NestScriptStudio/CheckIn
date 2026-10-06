@@ -1,12 +1,20 @@
 // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbzObXvQsTha4S_rtT_GgFkAXZqDXk8w13j_SGvRXQk-ts6wHQm3xD2VPXbp2ThRbg81VQ/exec";
+  "https://script.google.com/macros/s/AKfycbwFWJJYQJ7A5sWPpri4mgDNNx-OolEFTW-jECFGVdVmhL1ON3R9aj9Pinm0cOUP7NpQOg/exec";
 
 // Utilitas Kategori Waktu Otomatis
 function getKategoriWaktu() {
   const now = new Date();
-  const hours = now.getHours();
-  return hours < 11 ? "Pagi" : "Siang";
+  const hours = now.getHours(); // 0 - 23
+
+  // Sesi Pagi: Jam 06:00 s.d. 10:59
+  if (hours >= 6 && hours < 11) {
+    return "Pagi";
+  }
+  // Sesi Siang: Jam 11:00 s.d. 05:59 pagi keesokan harinya
+  else {
+    return "Siang";
+  }
 }
 
 // === FUNGSI BARU (KHUSUS SAPAAN NAVBAR) ===

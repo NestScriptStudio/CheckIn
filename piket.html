@@ -393,21 +393,34 @@
       function renderTableData() {
         const searchVal = document
           .getElementById("searchInput")
-          .value.toLowerCase();
+          .value.toLowerCase()
+          .trim();
         const tbody = document.getElementById("siswaTableBody");
-        const currentKW = getKategoriWaktu();
+        // Di dalam renderTableData() (piket_2.txt)
+        const currentKW = getKategoriWaktu().trim().toLowerCase();
 
-        // Filter siswa yang BELUM dinilai pada sesi waktu berjalan
-        const assessedNisns = todayLogs
-          .filter((l) => l.Kategori_Waktu === currentKW)
-          .map((l) => String(l.NISN_Siswa));
+        const assessedNisns = new Set(
+          todayLogs
+            .filter(
+              (l) =>
+                String(l.Kategori_Waktu || "")
+                  .trim()
+                  .toLowerCase() === currentKW,
+            )
+            .map((l) => {
+              const rawNisn = l.NISN_Siswa || l.nisn_siswa || l.NISN || "";
+              return String(rawNisn).trim().padStart(10, "0"); // Samakan format ke 10 digit
+            }),
+        );
 
         const availableSiswa = masterSiswa.filter((s) => {
-          const nisnStr = String(s.NISN || s.nisn);
+          const nisnStr = String(s.NISN || s.nisn || "")
+            .trim()
+            .padStart(10, "0"); // Samakan format ke 10 digit
           const namaStr = (s.Nama_Siswa || s.nama || "").toLowerCase();
           const kelasStr = (s.Kelas || s.kelas || "").toLowerCase();
 
-          const isUnassessed = !assessedNisns.includes(nisnStr);
+          const isUnassessed = !assessedNisns.has(nisnStr);
           const matchSearch =
             namaStr.includes(searchVal) || kelasStr.includes(searchVal);
 
@@ -415,19 +428,19 @@
         });
 
         if (availableSiswa.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-500 text-xs">🎉 Semua siswa telah dinilai pada sesi ini</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-500 text-xs">🎉 Semua siswa telah dinilai pada sesi ${currentKW} ini</td></tr>`;
           return;
         }
 
         tbody.innerHTML = availableSiswa
           .map(
             (siswa, idx) => `
-        <tr onclick="onRowClick('${siswa.NISN || siswa.nisn}')" class="hover:bg-blue-50/60 cursor-pointer transition-colors border-b border-slate-100">
-          <td class="p-3 text-center text-xs font-semibold text-slate-400">${idx + 1}</td>
-          <td class="p-3 font-semibold text-slate-700">${siswa.Nama_Siswa || siswa.nama}</td>
-          <td class="p-3 text-xs text-slate-500"><span class="px-2 py-1 bg-slate-100 rounded-md">${siswa.Kelas || siswa.kelas}</span></td>
-        </tr>
-      `,
+    <tr onclick="onRowClick('${String(siswa.NISN || siswa.nisn).trim()}')" class="hover:bg-blue-50/60 cursor-pointer transition-colors border-b border-slate-100">
+      <td class="p-3 text-center text-xs font-semibold text-slate-400">${idx + 1}</td>
+      <td class="p-3 font-semibold text-slate-700">${siswa.Nama_Siswa || siswa.nama}</td>
+      <td class="p-3 text-xs text-slate-500"><span class="px-2 py-1 bg-slate-100 rounded-md">${siswa.Kelas || siswa.kelas}</span></td>
+    </tr>
+  `,
           )
           .join("");
       }
