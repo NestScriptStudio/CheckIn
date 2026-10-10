@@ -605,24 +605,49 @@
           return;
         }
 
+        // 1. Ambil seluruh daftar kelas terdaftar dari data kelas
+        const kelasListSource = dashboardData.kelasList || [];
+        const allClasses = [];
+        kelasListSource.forEach((k) => {
+          const className =
+            typeof k === "object" ? k.Kode_Kelas || k.kelas || k.Nama_Kelas : k;
+          if (className) allClasses.push(String(className).trim());
+        });
+
+        // Pastikan kelas dari log yang mungkin tidak ada di master kelas tetap masuk
+        currentFilteredLogs.forEach((l) => {
+          if (l.Kelas && !allClasses.includes(String(l.Kelas).trim())) {
+            allClasses.push(String(l.Kelas).trim());
+          }
+        });
+        allClasses.sort();
+
+        // 2. Petakan jumlah pelanggaran per kelas (default 0)
         const kelasMap = {};
+        allClasses.forEach((k) => (kelasMap[k] = 0));
+
         currentFilteredLogs.forEach((l) => {
           if (l.Kelas) {
-            kelasMap[l.Kelas] = (kelasMap[l.Kelas] || 0) + 1;
+            const kName = String(l.Kelas).trim();
+            kelasMap[kName] = (kelasMap[kName] || 0) + 1;
           }
         });
 
+        // 3. Render HTML ke dalam modal
         let rowsHtml = `<div class="max-h-60 overflow-y-auto"><table class="w-full text-left text-xs text-slate-700">
-          <thead class="bg-slate-100 font-bold uppercase sticky top-0">
-            <tr><th class="p-2.5">Kelas</th><th class="p-2.5 text-right">Jumlah Pelanggaran</th></tr>
-          </thead><tbody>`;
+    <thead class="bg-slate-100 font-bold uppercase sticky top-0">
+      <tr><th class="p-2.5">Kelas</th><th class="p-2.5 text-right">Jumlah Pelanggaran</th></tr>
+    </thead><tbody>`;
 
-        const keys = Object.keys(kelasMap);
-        if (keys.length === 0) {
-          rowsHtml += `<tr><td colspan="2" class="p-4 text-center text-slate-400">Tidak ada data pelanggaran pada rentang tanggal ini.</td></tr>`;
+        if (allClasses.length === 0) {
+          rowsHtml += `<tr><td colspan="2" class="p-4 text-center text-slate-400">Tidak ada data kelas yang terdaftar.</td></tr>`;
         } else {
-          keys.sort().forEach((k) => {
-            rowsHtml += `<tr class="border-b"><td class="p-2.5 font-medium">${k}</td><td class="p-2.5 text-right font-bold text-red-600">${kelasMap[k]} Pelanggaran</td></tr>`;
+          allClasses.forEach((k) => {
+            const count = kelasMap[k] || 0;
+            // Berikan warna hijau (emerald) jika 0, dan merah jika ada pelanggaran
+            const countStyle =
+              count === 0 ? "text-emerald-600" : "text-red-600";
+            rowsHtml += `<tr class="border-b"><td class="p-2.5 font-medium">${k}</td><td class="p-2.5 text-right font-bold ${countStyle}">${count} Pelanggaran</td></tr>`;
           });
         }
 
